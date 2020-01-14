@@ -421,7 +421,7 @@ private:
   */
   void devicePoll()
   {
-    ROS_INFO_ONCE("devicePoll");
+    ROS_DEBUG_ONCE("Device poll starting...");
 
     enum State
     {
@@ -630,6 +630,8 @@ private:
       // Update diagnostics
       updater_.update();
     }
+
+    ROS_DEBUG_ONCE("Device poll finished.");
     NODELET_DEBUG_ONCE("Leaving thread.");
   }
 

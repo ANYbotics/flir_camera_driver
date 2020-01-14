@@ -61,7 +61,7 @@ SpinnakerCamera::SpinnakerCamera()
   , captureRunning_(false)
 {
   unsigned int num_cameras = camList_.GetSize();
-  ROS_INFO_STREAM_ONCE("[SpinnakerCamera]: Number of cameras detected: " << num_cameras);
+  ROS_DEBUG_STREAM_ONCE("[SpinnakerCamera]: Number of cameras detected: " << num_cameras);
 }
 
 SpinnakerCamera::~SpinnakerCamera()
@@ -180,7 +180,7 @@ void SpinnakerCamera::connect()
         if (IsAvailable(serial_ptr) && IsReadable(serial_ptr))
         {
           serial_ = atoi(serial_ptr->GetValue().c_str());
-          ROS_INFO("[SpinnakerCamera::connect]: Using Serial: %i", serial_);
+          ROS_DEBUG("[SpinnakerCamera::connect]: Using Serial: %i", serial_);
         }
         else
         {
@@ -193,7 +193,7 @@ void SpinnakerCamera::connect()
 
       if (IsAvailable(device_type_ptr) && IsReadable(device_type_ptr))
       {
-        ROS_INFO_STREAM("[SpinnakerCamera::connect]: Detected device type: " << device_type_ptr->ToString());
+        ROS_DEBUG_STREAM("[SpinnakerCamera::connect]: Detected device type: " << device_type_ptr->ToString());
 
         if (device_type_ptr->GetCurrentEntry() == device_type_ptr->GetEntryByName("U3V"))
         {
@@ -231,9 +231,20 @@ void SpinnakerCamera::connect()
 
       // detect model and set camera_ accordingly;
       Spinnaker::GenApi::CStringPtr model_name = node_map_->GetNode("DeviceModelName");
-      std::string model_name_str(model_name->ToString());
+      const std::string model_name_str(model_name->ToString());
 
-      ROS_INFO("[SpinnakerCamera::connect]: Camera model name: %s", model_name_str.c_str());
+      ROS_DEBUG("[SpinnakerCamera::connect]: Camera model name: %s", model_name_str.c_str());
+
+      // Display device information summary
+      Spinnaker::GenApi::INodeMap& genTLNodeMap = pCam_->GetTLDeviceNodeMap();
+      Spinnaker::GenApi::CEnumerationPtr device_type_ptr =
+          static_cast<Spinnaker::GenApi::CEnumerationPtr>(genTLNodeMap.GetNode("DeviceType"));
+      const std::string device_type_str(device_type_ptr->ToString());
+
+      ROS_INFO_STREAM("[SpinnakerCamera]: Detected device type: " << device_type_str << "."
+                   << " Camera model name: '" <<  model_name_str << "'"
+                   << " with serial '" << std::to_string(serial_) << "'.");
+
       if (model_name_str.find("Blackfly S") != std::string::npos)
         camera_.reset(new Camera(node_map_));
       else if (model_name_str.find("Chameleon3") != std::string::npos)
@@ -439,7 +450,7 @@ void SpinnakerCamera::grabImage(sensor_msgs::Image* image, const std::string& fr
         int height = image_ptr->GetHeight();
         int stride = image_ptr->GetStride();
 
-        // ROS_INFO_ONCE("\033[93m wxh: (%d, %d), stride: %d \n", width, height, stride);
+        ROS_DEBUG_ONCE("\033[93m wxh: (%d, %d), stride: %d \n", width, height, stride);
         fillImage(*image, imageEncoding, height, width, stride, image_ptr->GetData());
         image->header.frame_id = frame_id;
       }  // end else
