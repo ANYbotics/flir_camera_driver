@@ -54,9 +54,14 @@ override_dh_shlibdeps:
 	if [ -f "/opt/ros/melodic/setup.sh" ]; then . "/opt/ros/melodic/setup.sh"; fi && \
 	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info -l$(CURDIR)/debian/ros-melodic-spinnaker-camera-driver/opt/ros/melodic/lib/
 
+override_dh_installdirs:
+    # do not do anything here, the *.dir files will be created in the override_dh_auto_install target
+
 override_dh_auto_install:
 	# In case we're installing to a non-standard location, look for a setup.sh
 	# in the install tree that was dropped by catkin, and source it.  It will
 	# set things like CMAKE_PREFIX_PATH, PKG_CONFIG_PATH, and PYTHONPATH.
 	if [ -f "/opt/ros/melodic/setup.sh" ]; then . "/opt/ros/melodic/setup.sh"; fi && \
-	dh_auto_install
+    dh_auto_install && \
+    bash debian/install_separation.bash /opt/ros/melodic ros-melodic-spinnaker-camera-driver spinnaker_camera_driver && \
+    dh_installdirs
