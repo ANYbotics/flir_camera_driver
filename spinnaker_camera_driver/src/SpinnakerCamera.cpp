@@ -85,8 +85,13 @@ void SpinnakerCamera::setNewConfiguration(const spinnaker_camera_driver::Spinnak
   {
     ROS_DEBUG("SpinnakerCamera::setNewConfiguration: Reconfigure Stop.");
     bool capture_was_running = captureRunning_;
-    start();  // For some reason some params only work after aquisition has be started once.
-    stop();
+
+    // For some reason some params only work after aquisition has been started once.
+    {
+      start();
+      stop();
+    }
+
     camera_->setNewConfiguration(config, level);
     if (capture_was_running)
       start();

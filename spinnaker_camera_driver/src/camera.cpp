@@ -69,9 +69,12 @@ void Camera::setNewConfiguration(const SpinnakerConfig& config, const uint32_t& 
 {
   try
   {
+    ROS_DEBUG("[SpinnakerCamera]: Setting parameters that need the camera stream to be stopped.");
+    // Apply first the configurations that required the image stream to be stopped.
     if (level >= LEVEL_RECONFIGURE_STOP)
       setImageControlFormats(config);
 
+    ROS_DEBUG("[SpinnakerCamera]: Setting parameters that can be modified on-the-fly.");
     setFrameRate(static_cast<float>(config.acquisition_frame_rate));
     // Set enable after frame rate encase its false
     setProperty(node_map_, "AcquisitionFrameRateEnable", config.acquisition_frame_rate_enable);
@@ -206,6 +209,10 @@ void Camera::setImageControlFormats(const spinnaker_camera_driver::SpinnakerConf
   setProperty(node_map_, "OffsetX", config.image_format_x_offset);
   // Apply offset Y
   setProperty(node_map_, "OffsetY", config.image_format_y_offset);
+
+  // Mirror around X and Y axis.
+  setProperty(node_map_, "ReverseX", config.reverse_x);
+  setProperty(node_map_, "ReverseY", config.reverse_y);
 
   // Set Pixel Format
   setProperty(node_map_, "PixelFormat", config.image_format_color_coding);
