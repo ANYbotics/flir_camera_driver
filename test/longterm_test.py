@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+
+# System imports
+import os
+from datetime import datetime
+import time
+import sys
+import logging
+
+# ROS imports
+import rospy
+import rosnode
+from sensor_msgs.msg import CompressedImage 
+from anymal_longterm_tests import TopicTimeoutTester
+from anymal_longterm_tests import TestNode
+
+
+# Default timeout If the nominal rate is not found on the param server
+TOPIC_TIMEOUT = 0.1
+TOPIC_HARD_TIMEOUT = 30
+TEST_NAME = "wide_angle_camera_test"
+
+
+class WacTester(TopicTimeoutTester):
+    """
+    Wide angle camera test class that inherits from the topic timeout tester. 
+    The class tests if the wide angle camera topic times out. It keeps track
+    of the number of messages and timeouts and logs the timeout length.
+
+    Args:
+        TopicTimeoutTester (TopicTimeoutTester): Base class
+    """
+    def __init__(self, suffix="front", timeout=TOPIC_TIMEOUT):
+        """[summary]
+
+        Args:
+            suffix (str, optional): WAC suffix. Defaults to "front".
+        """
+        super().__init__(topic="/wide_angle_camera_" + suffix +
+                               "/image_color/compressed",
+                         message_type=CompressedImage,
+                         timeout=timeout, 
+                         hard_timeout=TOPIC_HARD_TIMEOUT)
+        self.name = "wide_angle_camera_test_" + suffix
+
+    def get_name(self):
+        """
+        Name of the tester instance
+
+        Returns:
+            str: name
+        """
+        return self.name
+
+
+def get_enabled_cameras():
+    """
+    Get the enabled cameras from the parameter server
+    and append them to the list of cameras
+    """
+    cams = []
+    if rospy.get_param('/wide_angle_camera_test/front_enabled', True):
+        cams.append(WacTester("front"))
+    if rospy.get_param('/wide_angle_camera_test/rear_enabled', True):
+        cams.append(WacTester("rear"))
+    return cams
+
+
+def main():
+    # Run the test and create a log when done
+    rospy.init_node(TEST_NAME)
+    camera_testers = get_enabled_cameras()
+    test = TestNode(TEST_NAME, camera_testers)
+    test.run_test()
+
+
+if __name__ == '__main__':
+    main()
