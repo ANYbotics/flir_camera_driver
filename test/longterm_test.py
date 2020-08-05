@@ -10,7 +10,7 @@ import logging
 # ROS imports
 import rospy
 import rosnode
-from sensor_msgs.msg import CompressedImage 
+from sensor_msgs.msg import Image
 from anymal_longterm_tests import TopicTimeoutTester
 from anymal_longterm_tests import TestNode
 
@@ -19,6 +19,8 @@ from anymal_longterm_tests import TestNode
 TOPIC_TIMEOUT = 0.1
 TOPIC_HARD_TIMEOUT = 30
 TEST_NAME = "wide_angle_camera_test"
+
+NUM_NOISE_TEST_POINTS = 100
 
 
 class WacTester(TopicTimeoutTester):
@@ -37,11 +39,26 @@ class WacTester(TopicTimeoutTester):
             suffix (str, optional): WAC suffix. Defaults to "front".
         """
         super().__init__(topic="/wide_angle_camera_" + suffix +
-                               "/image_color/compressed",
-                         message_type=CompressedImage,
+                               "/image_color",
+                         message_type=Image,
                          timeout=timeout, 
-                         hard_timeout=TOPIC_HARD_TIMEOUT)
+                         hard_timeout=TOPIC_HARD_TIMEOUT,
+                         custom_rx_hook=self.__check_data_in_bounds)
         self.name = "wide_angle_camera_test_" + suffix
+        self.image_prev = None
+
+    def __check_data_in_bounds(self, d):
+        # Check if we can see noise on the image.
+        # Sample the first couple of pixels and check that they
+        # are not exactly the same
+        test_points = d.data[:NUM_NOISE_TEST_POINTS]
+        if self.image_prev is not None:
+            # Check if the first NUM_NOISE_TEST_POINTS points are not 
+            # the same as in image_prev
+            if self.image_prev == test_points:
+                self.data_out_of_bounds += 1
+                rospy.logerr("No noise detected on {}".format(self.topic))
+        self.image_prev = test_points
 
     def get_name(self):
         """
