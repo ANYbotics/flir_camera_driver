@@ -168,6 +168,11 @@ public:
     return serial_;
   }
 
+  Spinnaker::GenApi::INodeMap&  getTLDeviceNodeMap() const
+  {
+    return pCam_->GetTLDeviceNodeMap();
+  }
+
 private:
   uint32_t serial_;  ///< A variable to hold the serial number of the desired camera.
 

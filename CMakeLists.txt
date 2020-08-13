@@ -6,8 +6,16 @@ set_directory_properties(PROPERTIES COMPILE_OPTIONS "-std=c++11;-Wall;-Wextra")
 project(any_spinnaker_camera_driver)
 
 find_package(catkin REQUIRED COMPONENTS
-  camera_info_manager diagnostic_updater dynamic_reconfigure
-  image_exposure_msgs image_transport nodelet roscpp sensor_msgs
+  camera_info_manager
+  diagnostic_aggregator
+  diagnostic_msgs
+  diagnostic_updater
+  dynamic_reconfigure
+  image_exposure_msgs
+  image_transport
+  nodelet
+  roscpp
+  sensor_msgs
   wfov_camera_msgs
 )
 
@@ -17,9 +25,15 @@ generate_dynamic_reconfigure_options(
   cfg/Spinnaker.cfg
 )
 
-catkin_package(CATKIN_DEPENDS
-  image_exposure_msgs nodelet roscpp sensor_msgs wfov_camera_msgs
-  DEPENDS OpenCV
+catkin_package(
+  CATKIN_DEPENDS
+    image_exposure_msgs
+    nodelet
+    roscpp
+    sensor_msgs
+    wfov_camera_msgs
+  DEPENDS
+    OpenCV
 )
 
 
@@ -96,6 +110,7 @@ install(TARGETS
   Cm3
   Diagnostics
   spinnaker_camera_node
+  spinnaker_test_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

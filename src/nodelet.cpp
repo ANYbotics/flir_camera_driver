@@ -370,7 +370,20 @@ private:
     diag_man->addDiagnostic("PowerSupplyVoltage", true, std::make_pair(4.5f, 5.2f), 4.4f, 5.3f);
     diag_man->addDiagnostic("PowerSupplyCurrent", true, std::make_pair(0.4f, 0.6f), 0.3f, 1.0f);
     diag_man->addDiagnostic<int>("DeviceUptime");
-    diag_man->addDiagnostic<int>("U3VMessageChannelID");
+    // Get DeviceType
+    try {
+      Spinnaker::GenApi::INodeMap& genTLNodeMap = spinnaker_.getTLDeviceNodeMap();
+      Spinnaker::GenApi::CEnumerationPtr device_type_ptr =
+          static_cast<Spinnaker::GenApi::CEnumerationPtr>(genTLNodeMap.GetNode("DeviceType"));
+      if (device_type_ptr->ToString()=="USB3Vision")
+      {
+        diag_man->addDiagnostic<int>("U3VMessageChannelID");
+      }
+    }
+    catch (const std::runtime_error& e)
+    {
+      NODELET_ERROR("%s", e.what());
+    }
   }
 
   /**

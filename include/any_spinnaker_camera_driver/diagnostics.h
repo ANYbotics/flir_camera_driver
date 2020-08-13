@@ -42,7 +42,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SPINNAKER_CAMERA_DRIVER_DIAGNOSTICS_H
 
 #include "any_spinnaker_camera_driver/SpinnakerCamera.h"
-#include "any_spinnaker_camera_driver/diagnostics.h"
 #include <diagnostic_msgs/DiagnosticArray.h>
 #include <diagnostic_msgs/DiagnosticStatus.h>
 #include <ros/ros.h>
