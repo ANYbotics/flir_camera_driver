@@ -5,18 +5,19 @@ set_directory_properties(PROPERTIES COMPILE_OPTIONS "-std=c++11;-Wall;-Wextra")
 
 project(any_spinnaker_camera_driver)
 
-find_package(catkin REQUIRED COMPONENTS
-  camera_info_manager
-  diagnostic_aggregator
-  diagnostic_msgs
-  diagnostic_updater
-  dynamic_reconfigure
-  image_exposure_msgs
-  image_transport
-  nodelet
-  roscpp
-  sensor_msgs
-  wfov_camera_msgs
+find_package(catkin REQUIRED
+  COMPONENTS
+    camera_info_manager
+    diagnostic_aggregator
+    diagnostic_msgs
+    diagnostic_updater
+    dynamic_reconfigure
+    image_exposure_msgs
+    image_transport
+    nodelet
+    roscpp
+    sensor_msgs
+    wfov_camera_msgs
 )
 
 find_package(OpenCV REQUIRED)
@@ -147,17 +148,30 @@ endif()
 ##   Test   ##
 ##############
 if(CATKIN_ENABLE_TESTING)
+  find_package(catkin REQUIRED
+    COMPONENTS
+      camera_info_manager
+      diagnostic_aggregator
+      diagnostic_msgs
+      diagnostic_updater
+      dynamic_reconfigure
+      image_exposure_msgs
+      image_transport
+      nodelet
+      roscpp
+      sensor_msgs
+      wfov_camera_msgs
+  )
+
   catkin_add_gtest(test_${PROJECT_NAME}
     test/empty_test.cpp
   )
-
   target_include_directories(test_${PROJECT_NAME}
     PRIVATE
       include
     SYSTEM PUBLIC
       ${catkin_INCLUDE_DIRS}
   )
-
   target_link_libraries(test_${PROJECT_NAME}
     gtest_main
     Camera
@@ -175,5 +189,5 @@ if(CATKIN_ENABLE_TESTING)
       TEST_BUILD_TARGETS
         test_${PROJECT_NAME}
     )
-  endif(cmake_code_coverage_FOUND)
+  endif()
 endif()
