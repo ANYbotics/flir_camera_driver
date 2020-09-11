@@ -181,7 +181,7 @@ void SpinnakerCamera::connect()
       if (serial_ == 0)
       {
         Spinnaker::GenApi::CStringPtr serial_ptr =
-            static_cast<Spinnaker::GenApi::CStringPtr>(genTLNodeMap.GetNode("DeviceID"));
+            static_cast<Spinnaker::GenApi::CStringPtr>(genTLNodeMap.GetNode("DeviceSerialNumber"));
         if (IsAvailable(serial_ptr) && IsReadable(serial_ptr))
         {
           serial_ = atoi(serial_ptr->GetValue().c_str());
@@ -222,11 +222,11 @@ void SpinnakerCamera::connect()
     try
     {
 	  // Set buffer mode to newest first, to always transmit first the most recent frames.
-      pCam_->TLStream.StreamBufferHandlingMode.SetValue(Spinnaker::StreamBufferHandlingMode_NewestFirstOverwrite);
+      pCam_->TLStream.StreamBufferHandlingMode.SetValue(Spinnaker::StreamBufferHandlingMode_NewestFirst);
       
-      // Set the buffer count mode to manual, and limit number of buffers to 1 per camera.
-      pCam_->TLStream.StreamDefaultBufferCountMode.SetValue(Spinnaker::StreamDefaultBufferCountMode_Manual);
-      pCam_->TLStream.StreamDefaultBufferCount.SetValue(1);
+      // Set the buffer count mode to manual, and limit number of buffers to 1 per camera to ensure real-time.
+      pCam_->TLStream.StreamBufferCountMode.SetValue(Spinnaker::StreamBufferCountMode_Manual);
+      pCam_->TLStream.StreamBufferCountManual.SetValue(1);
 		
       // Initialize Camera
       pCam_->Init();
@@ -342,7 +342,7 @@ void SpinnakerCamera::stop()
   }
 }
 
-void SpinnakerCamera::grabImage(sensor_msgs::Image* image, const std::string& frame_id)
+bool SpinnakerCamera::grabImage(sensor_msgs::Image* image, const std::string& frame_id)
 {
   std::lock_guard<std::mutex> scopedLock(mutex_);
 
@@ -359,7 +359,8 @@ void SpinnakerCamera::grabImage(sensor_msgs::Image* image, const std::string& fr
       if (image_ptr->IsIncomplete())
       {
         ROS_ERROR_STREAM("[SpinnakerCamera::grabImage] Image received from camera " << std::to_string(serial_) <<
-                                 " is incomplete.");
+                                 " is incomplete. " << "Status: " <<  Spinnaker::Image::GetImageStatusDescription(image_ptr->GetImageStatus()));
+        return false;
       }
       else
       {
@@ -458,11 +459,13 @@ void SpinnakerCamera::grabImage(sensor_msgs::Image* image, const std::string& fr
         ROS_DEBUG_ONCE("\033[93m wxh: (%d, %d), stride: %d \n", width, height, stride);
         fillImage(*image, imageEncoding, height, width, stride, image_ptr->GetData());
         image->header.frame_id = frame_id;
+        return true;
       }  // end else
     }
     catch (const Spinnaker::Exception& e)
     {
       ROS_ERROR_STREAM("[SpinnakerCamera::grabImage] Failed to retrieve buffer with error: " << e.what());
+      return false;
     }
   }
   else if (pCam_)

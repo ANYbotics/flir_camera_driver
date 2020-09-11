@@ -130,7 +130,11 @@ install(TARGETS
 #   endforeach()
 # endif()
 
-install(FILES nodelet_plugins.xml DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION} )
+install(FILES 
+   nodelet_plugins.xml
+   FLIR_license.txt
+ DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
 
 install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 

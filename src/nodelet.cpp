@@ -176,6 +176,26 @@ private:
       diagThread_.reset(
           new boost::thread(boost::bind(&any_spinnaker_camera_driver::SpinnakerCameraNodelet::diagPoll, this)));
     }
+    NODELET_DEBUG_STREAM("Connect diagCb callback! The number of diagnostics subscribers: " << diagnostics_pub_->getNumSubscribers());
+    if (diagnostics_pub_->getNumSubscribers() == 0)
+    {
+      if (diagThread_) {
+        NODELET_DEBUG("Shutting down the thread.");
+        diagThread_->interrupt();
+        diagThread_->join();
+        diagThread_.reset();
+      }
+    }
+    else if(!diagThread_)     // We need to connect
+    {
+      // Start the thread to loop through and publish messages
+      diagThread_.reset(
+          new boost::thread(boost::bind(&any_spinnaker_camera_driver::SpinnakerCameraNodelet::diagPoll, this)));
+    }
+    else
+    {
+      NODELET_DEBUG("Do nothing in callback diagCb.");
+    }
   }
 
   /*!
@@ -192,27 +212,24 @@ private:
           new boost::thread(boost::bind(&any_spinnaker_camera_driver::SpinnakerCameraNodelet::devicePoll, this)));
     }
 
-    // @tthomas - removing subscriber check and logic below as it's leading to mutex locks and crashes currently
-    /*
-    NODELET_DEBUG_ONCE("Connect callback!");
+    NODELET_DEBUG_STREAM("Connect connectCb callback! The number of image_raw subscribers: " << it_pub_.getNumSubscribers() << ". The number of image subscribers: "<< pub_->getPublisher().getNumSubscribers());
     std::lock_guard<std::mutex> scopedLock(connect_mutex_); // Grab the mutex.  Wait until we're done initializing
-    before letting this function through.
     // Check if we should disconnect (there are 0 subscribers to our data)
     if(it_pub_.getNumSubscribers() == 0 && pub_->getPublisher().getNumSubscribers() == 0)
     {
       if (pubThread_)
       {
-        NODELET_DEBUG_ONCE("Disconnecting.");
+        NODELET_DEBUG("Disconnecting.");
         pubThread_->interrupt();
-        scopedLock.unlock();
         pubThread_->join();
-        scopedLock.lock();
         pubThread_.reset();
         sub_.shutdown();
+        // Notify diagPoll();
+        state = DISCONNECTED;
 
         try
         {
-          NODELET_DEBUG_ONCE("Stopping camera capture.");
+          NODELET_DEBUG("Stopping camera capture.");
           spinnaker_.stop();
         }
         catch(std::runtime_error& e)
@@ -222,7 +239,7 @@ private:
 
         try
         {
-          NODELET_DEBUG_ONCE("Disconnecting from camera.");
+          NODELET_DEBUG("Disconnecting from camera.");
           spinnaker_.disconnect();
         }
         catch(std::runtime_error& e)
@@ -239,9 +256,8 @@ private:
     }
     else
     {
-      NODELET_DEBUG_ONCE("Do nothing in callback.");
+      NODELET_DEBUG("Do nothing in callback connectCb.");
     }
-    */
   }
 
   /*!
@@ -252,7 +268,7 @@ private:
   */
   void onInit()
   {
-    // Get nodeHandles
+    // Get multi-thread nodeHandles. Get the node handle with the Multi Threaded callback queue.
     ros::NodeHandle& nh = getMTNodeHandle();
     ros::NodeHandle& pnh = getMTPrivateNodeHandle();
 
@@ -273,7 +289,7 @@ private:
     }
     else
     {
-      NODELET_DEBUG_ONCE("Serial XMLRPC type.");
+      NODELET_DEBUG_ONCE("Unrecognized Serial XMLRPC type.");
       serial = 0;
     }
 
@@ -326,6 +342,8 @@ private:
 
     // Publish topics using ImageTransport through camera_info_manager (gives cool things like compression)
     it_.reset(new image_transport::ImageTransport(nh));
+    // SubscriberStatusCallback: http://docs.ros.org/melodic/api/roscpp/html/classros_1_1NodeHandle.html#ae4711ef282892176ba145d02f8f45f8d
+    // cb will be called every time a new subscriber is connected to.
     image_transport::SubscriberStatusCallback cb = boost::bind(&SpinnakerCameraNodelet::connectCb, this);
     it_pub_ = it_->advertiseCamera("image_raw", 5, cb, cb);
 
@@ -366,7 +384,7 @@ private:
     diag_man = std::unique_ptr<DiagnosticsManager>(new DiagnosticsManager(
         frame_id_, std::to_string(spinnaker_.getSerial()), diagnostics_pub_));
     diag_man->addDiagnostic("DeviceTemperature", true, std::make_pair(0.0f, 90.0f), -10.0f, 95.0f);
-    diag_man->addDiagnostic("AcquisitionResultingFrameRate", true, std::make_pair(10.0f, 60.0f), 5.0f, 90.0f);
+    diag_man->addDiagnostic("AcquisitionResultingFrameRate", true, std::make_pair(10.0f, 78.0f), 5.0f, 90.0f);
     diag_man->addDiagnostic("PowerSupplyVoltage", true, std::make_pair(4.5f, 5.2f), 4.4f, 5.3f);
     diag_man->addDiagnostic("PowerSupplyCurrent", true, std::make_pair(0.4f, 0.6f), 0.3f, 1.0f);
     diag_man->addDiagnostic<int>("DeviceUptime");
@@ -375,9 +393,10 @@ private:
       Spinnaker::GenApi::INodeMap& genTLNodeMap = spinnaker_.getTLDeviceNodeMap();
       Spinnaker::GenApi::CEnumerationPtr device_type_ptr =
           static_cast<Spinnaker::GenApi::CEnumerationPtr>(genTLNodeMap.GetNode("DeviceType"));
-      if (device_type_ptr->ToString()=="USB3Vision")
-      {
-        diag_man->addDiagnostic<int>("U3VMessageChannelID");
+      if (IsAvailable(device_type_ptr) && IsReadable(device_type_ptr)) {
+        if (device_type_ptr->ToString() == "USB3Vision") {
+          diag_man->addDiagnostic<int>("U3VMessageChannelID");
+        }
       }
     }
     catch (const std::runtime_error& e)
@@ -419,10 +438,17 @@ private:
   void diagPoll()
   {
     while (!boost::this_thread::interruption_requested())  // Block until we need
-                                                           // to stop this
-                                                           // thread.
+                                                           // to stop this// thread.
     {
-      diag_man->processDiagnostics(&spinnaker_);
+      // Add this catch block so that the driver will not die when we unplug the camera and subscribe to the /diagnostics.
+      if (state>=CONNECTED) {
+        try {
+          diag_man->processDiagnostics(&spinnaker_);
+        } catch (...) {
+            NODELET_DEBUG_THROTTLE(60, "Cannot process diagnostics. (throttled: once per 60s)");
+            return;
+        }
+      }
     }
   }
 
@@ -435,33 +461,19 @@ private:
   void devicePoll()
   {
     ROS_DEBUG_ONCE("Device poll starting...");
-
-    enum State
-    {
-      NONE,
-      ERROR,
-      STOPPED,
-      DISCONNECTED,
-      CONNECTED,
-      STARTED
-    };
-
-    State state = DISCONNECTED;
-    State previous_state = NONE;
+    state = DISCONNECTED;
+    previous_state = NONE;
 
     while (!boost::this_thread::interruption_requested())  // Block until we need to stop this thread.
     {
-      bool state_changed = state != previous_state;
-
-      previous_state = state;
-
-      switch (state)
+      previous_state = state.load();
+      //  Forgetting the break statement at the end of the case statements is one of the most common C++ mistakes made!
+      switch (state.load())
       {
         case ERROR:
 // Generally there's no need to stop before disconnecting after an
 // error. Indeed, stop will usually fail.
-#if STOP_ON_ERROR
-          // Try stopping the camera
+        // Try stopping the camera
           {
             std::lock_guard<std::mutex> scopedLock(connect_mutex_);
             sub_.shutdown();
@@ -477,16 +489,12 @@ private:
           }
           catch (std::runtime_error& e)
           {
-            if (state_changed)
-            {
-              NODELET_ERROR("Failed to stop with error: %s", e.what());
-              ros::Duration(1.0).sleep();  // sleep for one second each time
-            }
+            NODELET_ERROR("Failed to stop with error: %s", e.what());
+            ros::Duration(1.0).sleep();  // sleep for one second each time
             state = ERROR;
           }
-
           break;
-#endif
+
         case STOPPED:
           // Try disconnecting from the camera
           try
@@ -499,11 +507,8 @@ private:
           }
           catch (std::runtime_error& e)
           {
-            if (state_changed)
-            {
-              NODELET_ERROR("Failed to disconnect with error: %s", e.what());
-              ros::Duration(1.0).sleep();  // sleep for one second each time
-            }
+            NODELET_ERROR("Failed to disconnect with error: %s", e.what());
+            ros::Duration(1.0).sleep();  // sleep for one second each time
             state = ERROR;
           }
 
@@ -547,11 +552,9 @@ private:
           }
           catch (const std::runtime_error& e)
           {
-            if (state_changed)
-            {
-              NODELET_ERROR("Failed to connect with error: %s", e.what());
-              ros::Duration(1.0).sleep();  // sleep for one second each time
-            }
+
+            NODELET_ERROR("Failed to connect with error: %s", e.what());
+            ros::Duration(1.0).sleep();  // sleep for one second each time
             state = ERROR;
           }
 
@@ -569,23 +572,28 @@ private:
           }
           catch (std::runtime_error& e)
           {
-            if (state_changed)
-            {
-              NODELET_ERROR("Failed to start with error: %s", e.what());
-              ros::Duration(1.0).sleep();  // sleep for one second each time
-            }
+            NODELET_ERROR("Failed to start with error: %s", e.what());
+            ros::Duration(1.0).sleep();  // sleep for one second each time
             state = ERROR;
           }
 
           break;
         case STARTED:
+          // This try catch block cannot catch the issue if wfov_image->image is empty.
           try
           {
             wfov_camera_msgs::WFOVImagePtr wfov_image(new wfov_camera_msgs::WFOVImage);
             // Get the image from the camera library
             NODELET_DEBUG_ONCE("Starting a new grab from camera with serial {%d}.", spinnaker_.getSerial());
-            spinnaker_.grabImage(&wfov_image->image, frame_id_);
-
+            // It still works even if wfov_image->image has no data.
+            const auto grab_success = spinnaker_.grabImage(&wfov_image->image, frame_id_);
+            if (!grab_success)
+            {
+              NODELET_WARN("Failed to grab an image.");
+              // Try to reconnect the camera. We will still publish the image without data.
+              state = ERROR;
+              break;
+            }
             // Set other values
             wfov_image->header.frame_id = frame_id_;
 
@@ -637,7 +645,8 @@ private:
 
           break;
         default:
-          NODELET_ERROR("Unknown camera state %d!", state);
+          NODELET_ERROR("Unknown camera state %d!", state.load());
+          break;
       }
 
       // Update diagnostics
@@ -726,6 +735,17 @@ private:
 
   /// Configuration:
   any_spinnaker_camera_driver::SpinnakerConfig config_;
+  enum State
+  {
+    NONE,
+    ERROR,
+    STOPPED,
+    DISCONNECTED,
+    CONNECTED,
+    STARTED
+  };
+  std::atomic<State> state;
+  std::atomic<State> previous_state;
 };
 
 PLUGINLIB_EXPORT_CLASS(any_spinnaker_camera_driver::SpinnakerCameraNodelet,
