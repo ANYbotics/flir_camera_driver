@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.0.2)
+project(any_spinnaker_camera_driver)
 
 set_directory_properties(PROPERTIES COMPILE_OPTIONS "-std=c++11;-Wall;-Wextra")
 
-
-project(any_spinnaker_camera_driver)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(catkin REQUIRED
   COMPONENTS
@@ -195,3 +195,13 @@ if(CATKIN_ENABLE_TESTING)
     )
   endif()
 endif()
+
+#################
+## Clang_tools ##
+#################
+find_package(cmake_clang_tools QUIET)
+if(cmake_clang_tools_FOUND)
+  add_default_clang_tooling(
+    DISABLE_CLANG_FORMAT
+  )
+endif(cmake_clang_tools_FOUND)
