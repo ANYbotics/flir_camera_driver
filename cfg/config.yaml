@@ -1,0 +1,46 @@
+spinnaker_camera_nodelet:
+  acquisition_frame_rate: 30.0
+  acquisition_frame_rate_enable: false
+  auto_exposure_time_upper_limit: 40000.0
+  auto_gain: Continuous
+  auto_sharpness: true
+  auto_white_balance: Continuous
+  brightness: 1.7
+  camera_info_url: ""
+  enable_trigger: "Off"
+  exposure_auto: Continuous
+  exposure_mode: Timed
+  exposure_time: 4000.0
+  frame_id: wide_angle_camera_camera_parent
+  gain: 0.0
+  gain_selector: All
+  gamma: 0.81
+  gamma_enable: true
+  # For color cameras, the bayer pixel format is updated if Reverse X and Reverse Y are changed. For example, if the original pixel format is BayerRG8 and Reverse X is switched from Disabled to Enabled, then the pixel format is updated to BayerGR8.
+  # The original pixel format is: BayerRG8. If both X and Y are reversed, then BayerBG8 should be used.
+  image_format_color_coding: BayerBG8
+  image_format_roi_height: 0
+  image_format_roi_width: 0
+  image_format_x_binning: 1
+  image_format_x_decimation: 1
+  image_format_x_offset: 0
+  image_format_y_binning: 1
+  image_format_y_decimation: 1
+  image_format_y_offset: 0
+  line_mode: Input
+  line_selector: Line0
+  line_source: Off
+  reverse_x: true
+  reverse_y: true
+  saturation: 100.0
+  saturation_enable: false
+  serial: 0
+  sharpening_enable: false
+  sharpening_threshold: 0.1
+  sharpness: 1024.0
+  trigger_activation_mode: RisingEdge
+  trigger_overlap_mode: ReadOut
+  trigger_selector: FrameStart
+  trigger_source: Line2
+  white_balance_blue_ratio: 800.0
+  white_balance_red_ratio: 550.0

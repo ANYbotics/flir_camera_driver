@@ -104,14 +104,15 @@ add_executable(spinnaker_camera_node src/node.cpp)
 target_link_libraries(spinnaker_camera_node SpinnakerCameraLib ${catkin_LIBRARIES})
 set_target_properties(spinnaker_camera_node PROPERTIES OUTPUT_NAME camera_node PREFIX "")
 
-install(TARGETS
-  SpinnakerCameraLib
-  SpinnakerCameraNodelet
-  Camera
-  Cm3
-  Diagnostics
-  spinnaker_camera_node
-  spinnaker_test_node
+install(
+  TARGETS
+    SpinnakerCameraLib
+    SpinnakerCameraNodelet
+    Camera
+    Cm3
+    Diagnostics
+    spinnaker_camera_node
+    spinnaker_test_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -130,13 +131,18 @@ install(TARGETS
 #   endforeach()
 # endif()
 
-install(FILES 
+install(
+  FILES
    nodelet_plugins.xml
    FLIR_license.txt
  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
-install(DIRECTORY launch DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+install(
+  DIRECTORY
+    cfg
+    launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 
 if (CATKIN_ENABLE_TESTING)
   find_package(roslaunch REQUIRED)
