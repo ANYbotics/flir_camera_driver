@@ -347,6 +347,18 @@ private:
     // SubscriberStatusCallback: http://docs.ros.org/melodic/api/roscpp/html/classros_1_1NodeHandle.html#ae4711ef282892176ba145d02f8f45f8d
     // cb will be called every time a new subscriber is connected to.
     image_transport::SubscriberStatusCallback cb = boost::bind(&SpinnakerCameraNodelet::connectCb, this);
+    // Start devicePoll first to trigger image streaming. This is needed because:
+    // When we launch this camera driver together with other nodes which subscribe to image_color or image_color_rect topic, if the other nodes
+    // are loaded first, subscribing to the image_color or image_color_rect topic, cb will not be triggered when the camera driver is loaded.
+    // As a result, we will not get image_color or image_color_rect streaming even when explicitly subscribing to these topics additionally (fishy).
+    // One solution is to unsubscribe to these topics from these nodes and cb will be triggered so that the camera will start image streaming.
+    // Another solution will be to explicit start the devicePoll thread to make the camera stream when launching the driver, which is what we do below.
+    if (!pubThread_)
+    {
+      // Start the thread to loop through and publish messages
+      pubThread_.reset(
+          new boost::thread(boost::bind(&any_spinnaker_camera_driver::SpinnakerCameraNodelet::devicePoll, this)));
+    }
     it_pub_ = it_->advertiseCamera("image_raw", 5, cb, cb);
 
     // Set up diagnostics
@@ -625,9 +637,8 @@ private:
             wfov_image->info = *ci_;
 
             // Publish the full message
-            if (pub_->getPublisher().getNumSubscribers() > 0){
-              pub_->publish(wfov_image);
-            }
+            pub_->publish(wfov_image);
+
             // Publish the message using standard image transport
             if (it_pub_.getNumSubscribers() > 0)
             {

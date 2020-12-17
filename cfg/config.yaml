@@ -1,6 +1,6 @@
 spinnaker_camera_nodelet:
-  acquisition_frame_rate: 30.0
-  acquisition_frame_rate_enable: false
+  acquisition_frame_rate: 25.0
+  acquisition_frame_rate_enable: true
   auto_exposure_time_upper_limit: 40000.0
   auto_gain: Continuous
   auto_sharpness: true
