@@ -271,7 +271,9 @@ private:
   void onInit()
   {
     // Get multi-thread nodeHandles. Get the node handle with the Multi Threaded callback queue.
+    // For ROS publishers except the image from the camera.
     ros::NodeHandle& nh = getMTNodeHandle();
+    // For accessing ROS parameter server and dynamic re-configure.
     ros::NodeHandle& pnh = getMTPrivateNodeHandle();
 
     // Get a serial number through ros
@@ -372,8 +374,9 @@ private:
     double freq_tolerance;  // Tolerance before stating error on publish frequency, fractional percent of desired
                             // frequencies.
     pnh.param<double>("freq_tolerance", freq_tolerance, 0.1);
-    int window_size;  // Number of samples to consider in frequency
-    pnh.param<int>("window_size", window_size, 100);
+    // Duration of the window of the events (second). Every received message or image is an event.
+    int window_size;
+    pnh.param<int>("window_size", window_size, 5);
     double min_acceptable;  // The minimum publishing delay (in seconds) before warning.  Negative values mean future
                             // dated messages.
     pnh.param<double>("min_acceptable_delay", min_acceptable, 0.0);
@@ -398,9 +401,13 @@ private:
     diag_man = std::unique_ptr<DiagnosticsManager>(new DiagnosticsManager(
         frame_id_, std::to_string(spinnaker_.getSerial()), diagnostics_pub_));
     diag_man->addDiagnostic("DeviceTemperature", true, std::make_pair(0.0f, 90.0f), -10.0f, 95.0f);
-    diag_man->addDiagnostic("AcquisitionResultingFrameRate", true, std::make_pair(10.0f, 78.0f), 5.0f, 90.0f);
+    // Frame rate specification: http://softwareservices.flir.com/BFS-GE-16S2-BD2/latest/Model/spec.html?Highlight=78
+    // Resulting frame rate in Hertz. If this does not equal the Acquisition Frame Rate it is because the Exposure Time is greater than the frame time.
+    diag_man->addDiagnostic("AcquisitionResultingFrameRate", true, std::make_pair(0.8f, 78.0f), 0.0f, 79.0f);
+    // The nominal voltage to the camera is 5V. The nominal voltage to the GPIO connector is 12V.
     diag_man->addDiagnostic("PowerSupplyVoltage", true, std::make_pair(4.5f, 5.2f), 4.4f, 5.3f);
-    diag_man->addDiagnostic("PowerSupplyCurrent", true, std::make_pair(0.4f, 0.6f), 0.3f, 1.0f);
+    // Power consumption is 3 W maximum.
+    diag_man->addDiagnostic("PowerSupplyCurrent", false, std::make_pair(0.4f, 0.6f), 0.3f, 1.0f);
     diag_man->addDiagnostic<int>("DeviceUptime");
     // Get DeviceType
     try {
@@ -616,8 +623,13 @@ private:
             wfov_image->white_balance_red = wb_red_;
 
             // wfov_image->temperature = spinnaker_.getCameraTemperature();
-
             ros::Time time = ros::Time::now();
+            try {
+              NODELET_DEBUG_THROTTLE(1, "The measured image frame rate is: %f (throttled: 1s)", 1 / (time - prevImgRosTime_).toSec());
+            } catch (std::runtime_error& e){
+              NODELET_ERROR("Cannot calculate the image frame rate! %s", e.what());
+            }
+            prevImgRosTime_ = time;
             wfov_image->header.stamp = time;
             wfov_image->image.header.stamp = time;
 
@@ -720,6 +732,7 @@ private:
   SpinnakerCamera spinnaker_;      ///< Instance of the SpinnakerCamera library, used to interface with the hardware.
   sensor_msgs::CameraInfoPtr ci_;  ///< Camera Info message.
   std::string frame_id_;           ///< Frame id for the camera messages, defaults to 'camera'
+  ros::Time prevImgRosTime_;
   std::shared_ptr<boost::thread> pubThread_;  ///< The thread that reads and publishes the images.
   std::shared_ptr<boost::thread> diagThread_;  ///< The thread that reads and publishes the diagnostics.
 
