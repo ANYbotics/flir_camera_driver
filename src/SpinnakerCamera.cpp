@@ -136,10 +136,10 @@ Spinnaker::GenApi::CNodePtr SpinnakerCamera::readProperty(const Spinnaker::GenIC
   }
 }
 
-void SpinnakerCamera::connect()
-{
-  if (!pCam_)
-  {
+void SpinnakerCamera::obtainCameraPtr(double sleep_time){
+  while ((!pCam_ || !pCam_->IsValid()) && ros::ok()){
+    // Without the following line, camList_ will be always empty if we start the ROS driver before the cameras are powered on.
+    camList_ = system_->GetCameras();
     // If we have a specific camera to connect to (specified by a serial number)
     if (serial_ != 0)
     {
@@ -151,8 +151,16 @@ void SpinnakerCamera::connect()
       }
       catch (const Spinnaker::Exception& e)
       {
-        throw std::runtime_error("[SpinnakerCamera::connect] Could not find camera with serial number " +
-                                 serial_string + ". Is that camera plugged in? Error: " + std::string(e.what()));
+        // This exception is not captured in general.
+        ROS_ERROR_STREAM("[SpinnakerCamera::connect] Could not find camera with serial number " +
+                         serial_string + ". Is that camera plugged in? Error: " + std::string(e.what()));
+      }
+      if (!pCam_ || !pCam_->IsValid()){
+        ROS_ERROR_STREAM_THROTTLE(10, "[SpinnakerCamera::connect] Could not find camera with serial number " +
+                                      serial_string + ". Is that camera plugged in? (Throttled: 10s)");
+      }
+      else{
+        break;
       }
     }
     else
@@ -164,14 +172,27 @@ void SpinnakerCamera::connect()
       }
       catch (const Spinnaker::Exception& e)
       {
-        throw std::runtime_error("[SpinnakerCamera::connect] Failed to get first connected camera. Error: " +
-                                 std::string(e.what()));
+        // This exception is not captured in general.
+        ROS_ERROR_STREAM("[SpinnakerCamera::connect] Failed to get first connected camera. Error: " +
+                         std::string(e.what()));
+      }
+      if (!pCam_ || !pCam_->IsValid()){
+        ROS_ERROR_STREAM_THROTTLE(10, "[SpinnakerCamera::connect] Failed to get first connected camera. (Throttled: 10s)");
+      }
+      else{
+        break;
       }
     }
-    if (!pCam_ || !pCam_->IsValid())
-    {
-      throw std::runtime_error("[SpinnakerCamera::connect] Failed to obtain camera reference.");
-    }
+    // Allow some time to sleep before querying the camera again.
+    ros::Duration(sleep_time).sleep();
+  }
+}
+
+void SpinnakerCamera::connect()
+{
+  if (!pCam_)
+  {
+    obtainCameraPtr(1.0);
 
     try
     {

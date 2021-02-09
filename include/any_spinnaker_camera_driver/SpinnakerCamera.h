@@ -208,6 +208,12 @@ private:
   // When chunk data is turned on, the data is made available in both the nodemap
   // and each image.
   void ConfigureChunkData(const Spinnaker::GenApi::INodeMap& nodeMap);
+  /**
+   * @brief The function tries to obtain the valid camera pointer. It contains a while loop to query the camera point.
+   * It never returns unless it obtains a valid camera pointer.
+   * @param sleep_time The sleep time of each query in the loop (Unit:second)
+   */
+  void obtainCameraPtr(double sleep_time);
 };
 }  // namespace any_spinnaker_camera_driver
 #endif  // SPINNAKER_CAMERA_DRIVER_SPINNAKERCAMERA_H
