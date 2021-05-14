@@ -84,6 +84,13 @@ public:
   {
     std::lock_guard<std::mutex> scopedLock(connect_mutex_);
 
+    // Support that nodelets are shut down smoothly. Explicit tear down of ROS infrastructure 
+    // ensures that nodelet threads leave ROS-time-dependent sleeps.
+    // Request shutdown of the ROS node.
+    ros::requestShutdown();
+    // Shut down ROS time.
+    ros::Time::shutdown();
+
     if (diagThread_)
     {
       diagThread_->interrupt();
