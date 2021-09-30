@@ -94,7 +94,7 @@ public:
                      std::pair<float, float> operational = std::make_pair(0.0, 0.0), float lower_bound = 0,
                      float upper_bound = 0);
 
-private:
+ private:
   /*
    * diagnostic_params is aData Structure to represent a parameter and its
    * bounds
@@ -122,9 +122,10 @@ private:
   template <typename T>
   diagnostic_msgs::DiagnosticStatus getDiagStatus(const diagnostic_params<T>& param, const T value);
 
-  // constuctor parameters
+  // constructor parameters
   std::string camera_name_;
   std::string serial_number_;
+  std::string camera_position_;
   std::shared_ptr<ros::Publisher> diagnostics_pub_;
 
   // vectors to keep track of the items to publish

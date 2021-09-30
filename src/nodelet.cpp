@@ -117,6 +117,57 @@ public:
   }
 
 private:
+ /*!
+  * \brief Timer to periodically check the interface diagnostics.
+  *
+  * @param event  ROS timer event.
+  */
+ void checkInterfaceStateTimerCb(const ros::WallTimerEvent& /*event*/) { interface_diagnostics_updater_.update(); }
+
+ /*!
+  * \brief Function that calculates the camera interface diagnostic status.
+  *
+  * This function reads the driver internal `state` variable and determines the interface status based on it.
+  * It is added to the iface_diagnostics_updater_ and gets called on every iface_diagnostics_updater_.update()
+  * \param stat  diagnostic_updater::DiagnosticStatusWrapper the diagnostic status that will be published by the interface diagnostic updater
+  */
+ void checkInterfaceState(diagnostic_updater::DiagnosticStatusWrapper &stat){
+   std::string iface_status_message {""};
+   auto iface_status_level {diagnostic_msgs::DiagnosticStatus::OK};
+   switch(state.load()){
+     case NONE:
+       iface_status_level = diagnostic_msgs::DiagnosticStatus::OK;
+       iface_status_message = "Camera communication not started yet";
+       break;
+     case ERROR:
+       iface_status_level = diagnostic_msgs::DiagnosticStatus::ERROR;
+       iface_status_message = "Camera communication error";
+       break;
+     case STOPPED:
+       iface_status_level = diagnostic_msgs::DiagnosticStatus::WARN;
+       iface_status_message = "Camera communication stopped";
+       break;
+     case DISCONNECTED:
+       iface_status_level = diagnostic_msgs::DiagnosticStatus::ERROR;
+       iface_status_message = "Camera disconnected";
+       break;
+     case CONNECTED:
+       iface_status_level = diagnostic_msgs::DiagnosticStatus::OK;
+       iface_status_message = "Camera connected";
+       break;
+     case STARTED:
+
+       break;
+     default:
+       iface_status_level = diagnostic_msgs::DiagnosticStatus::WARN;
+       iface_status_message = "Unknown camera connection state";
+       break;
+   }
+   stat.summary(iface_status_level, iface_status_message);
+
+ }
+
+
   /*!
   * \brief Function that allows reconfiguration of the camera.
   *
@@ -212,6 +263,7 @@ private:
   */
   void connectCb()
   {
+    // TODO(dlopez) does this mean that once we subscribe for a first time the driver keeps polling the camera forever?
     std::lock_guard<std::mutex> scopedLock(connect_mutex_); // Grab the mutex.  Wait until we're done initializing
     if (!pubThread_)  // We need to connect
     {
@@ -312,8 +364,7 @@ private:
     while (serial == 0 && !camera_serial_path.empty())
     {
       serial = readSerialAsHexFromFile(camera_serial_path);
-      if (serial == 0)
-      {
+      if (serial == 0) {
         NODELET_WARN_ONCE("Waiting for camera serial path to become available");
         ros::Duration(1.0).sleep();  // Sleep for 1 second, wait for serial device path to become available
       }
@@ -322,6 +373,17 @@ private:
     NODELET_DEBUG_ONCE("Using camera serial %d", serial);
 
     spinnaker_.setDesiredCamera((uint32_t)serial);
+
+    std::stringstream cinfo_name;
+    cinfo_name << serial;
+
+    // Set up interface diagnostics
+    camera_name_ = nh.getNamespace();
+    interface_diagnostics_updater_.setHardwareID(camera_name_ + " " + cinfo_name.str());
+    interface_diagnostics_updater_.add("Interface status checker", this, &SpinnakerCameraNodelet::checkInterfaceState);
+    interface_diagnostics_updater_.broadcast(0, "Starting diagnostics");
+    interface_callback_timer_ =
+        nh.createWallTimer(ros::WallDuration(1.0), &SpinnakerCameraNodelet::checkInterfaceStateTimerCb, this, false, true);
 
     // Get GigE camera parameters:
     pnh.param<int>("packet_size", packet_size_, 1400);
@@ -344,11 +406,15 @@ private:
     dynamic_reconfigure::Server<any_spinnaker_camera_driver::SpinnakerConfig>::CallbackType f =
         boost::bind(&any_spinnaker_camera_driver::SpinnakerCameraNodelet::paramCallback, this, _1, _2);
 
+    // Set state to ERROR to catch the driver looping during initialization in case that no camera is connected
+    state = State::ERROR;
+
     srv_->setCallback(f);
 
+    // Reset state to NONE if camera is correctly initialized
+    state = State::NONE;
+
     // Start the camera info manager and attempt to load any configurations
-    std::stringstream cinfo_name;
-    cinfo_name << serial;
     cinfo_.reset(new camera_info_manager::CameraInfoManager(nh, cinfo_name.str(), camera_info_url));
 
     // Publish topics using ImageTransport through camera_info_manager (gives cool things like compression)
@@ -371,7 +437,8 @@ private:
     it_pub_ = it_->advertiseCamera("image_raw", 5, cb, cb);
 
     // Set up diagnostics
-    updater_.setHardwareID("spinnaker_camera " + cinfo_name.str());
+    interface_diagnostics_updater_.setHardwareID(camera_name_ + " " + cinfo_name.str());
+
 
     // Set up a diagnosed publisher
     double desired_freq;
@@ -668,6 +735,7 @@ private:
           catch (CameraTimeoutException& e)
           {
             NODELET_WARN("%s", e.what());
+            state = ERROR;
           }
 
           catch (std::runtime_error& e)
@@ -729,6 +797,11 @@ private:
   /// constructor
   /// requirements
   ros::Subscriber sub_;  ///< Subscriber for gain and white balance changes.
+
+  // Interface diagnostics
+  diagnostic_updater::Updater interface_diagnostics_updater_;  //< Based on the driver state, reports the interface status
+  ros::WallTimer interface_callback_timer_;  //< Checks the interface periodically
+  std::string camera_name_ ; //< Indicates if it is the front or rear camera
 
   std::mutex connect_mutex_;
 

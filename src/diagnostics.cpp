@@ -82,7 +82,7 @@ diagnostic_msgs::DiagnosticStatus DiagnosticsManager::getDiagStatus(const diagno
   diagnostic_msgs::DiagnosticStatus diag_status;
   diag_status.values.push_back(kv);
   diag_status.name = "Spinnaker " + Spinnaker::GenICam::gcstring(camera_name_.c_str()) + " " + param.parameter_name;
-  diag_status.hardware_id = serial_number_;
+  diag_status.hardware_id =  camera_name_ + " " + serial_number_;
 
   // Determine status level
   if (!param.check_ranges || (value > param.operational_range.first && value <= param.operational_range.second))
@@ -111,7 +111,7 @@ void DiagnosticsManager::processDiagnostics(SpinnakerCamera* spinnaker)
   // Manufacturer Info
   diagnostic_msgs::DiagnosticStatus diag_manufacture_info;
   diag_manufacture_info.name = "Spinnaker " + camera_name_ + " Manufacture Info";
-  diag_manufacture_info.hardware_id = serial_number_;
+  diag_manufacture_info.hardware_id =  camera_name_ + " " + serial_number_;
 
   for (const std::string param : manufacturer_params_)
   {
