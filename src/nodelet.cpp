@@ -118,57 +118,57 @@ public:
 
 private:
  /*!
-  * \brief Timer to periodically check the interface diagnostics.
+  * \brief Timer to periodically update the status of the sensor interface in ros diagnostics and in a dedicated topic
   *
-  * @param event  ROS timer event.
+  * \param event  ROS timer event.
   */
- void checkInterfaceStateTimerCb(const ros::WallTimerEvent& /*event*/) { interface_diagnostics_updater_.update(); }
+ void checkInterfaceStateTimerCb(const ros::WallTimerEvent& /*event*/) {
+   // Update diagnostics
+   interface_diagnostics_updater_.update();
+
+   // Publish machine-readable status to a dedicated topic
+   interface_status_pub_.publish(getInterfaceStateROSMsg());
+ }
 
  /*!
-  * \brief Function that calculates the camera interface diagnostic status.
+  * \brief Converts the current interface State into a diagnostic_msgs::DiagnosticStatus compatible format
   *
-  * This function reads the driver internal `state` variable and determines the interface status based on it.
-  * It is added to the iface_diagnostics_updater_ and gets called on every iface_diagnostics_updater_.update()
-  * \param stat  diagnostic_updater::DiagnosticStatusWrapper the diagnostic status that will be published by the interface diagnostic updater
+  * \param interface_status Interface status level
+  * \param interface_status_msg Additional feedback on the interface status
   */
- void checkInterfaceState(diagnostic_updater::DiagnosticStatusWrapper &stat){
-   std::string iface_status_message {""};
-   auto iface_status_level {diagnostic_msgs::DiagnosticStatus::OK};
-   switch(state.load()){
+ void getROSDiagnosticsInfo(int8_t& interface_status_level, std::string& interface_status_message) {
+   switch (state.load()) {
      case NONE:
-       iface_status_level = diagnostic_msgs::DiagnosticStatus::OK;
-       iface_status_message = "Camera communication not started yet";
+       interface_status_level = diagnostic_msgs::DiagnosticStatus::OK;
+       interface_status_message = "OK - Camera communication not started yet";
        break;
      case ERROR:
-       iface_status_level = diagnostic_msgs::DiagnosticStatus::ERROR;
-       iface_status_message = "Camera communication error";
+       interface_status_level = diagnostic_msgs::DiagnosticStatus::ERROR;
+       interface_status_message = "ERROR - Camera communication error";
        break;
      case STOPPED:
-       iface_status_level = diagnostic_msgs::DiagnosticStatus::WARN;
-       iface_status_message = "Camera communication stopped";
+       interface_status_level = diagnostic_msgs::DiagnosticStatus::WARN;
+       interface_status_message = "WARN - Camera communication stopped";
        break;
      case DISCONNECTED:
-       iface_status_level = diagnostic_msgs::DiagnosticStatus::ERROR;
-       iface_status_message = "Camera disconnected";
+       interface_status_level = diagnostic_msgs::DiagnosticStatus::ERROR;
+       interface_status_message = "ERROR - Camera disconnected";
        break;
      case CONNECTED:
-       iface_status_level = diagnostic_msgs::DiagnosticStatus::OK;
-       iface_status_message = "Camera connected";
+       interface_status_level = diagnostic_msgs::DiagnosticStatus::OK;
+       interface_status_message = "OK - Camera connected";
        break;
      case STARTED:
 
        break;
      default:
-       iface_status_level = diagnostic_msgs::DiagnosticStatus::WARN;
-       iface_status_message = "Unknown camera connection state";
+       interface_status_level = diagnostic_msgs::DiagnosticStatus::WARN;
+       interface_status_message = "WARN - Unknown camera connection state";
        break;
    }
-   stat.summary(iface_status_level, iface_status_message);
-
  }
 
-
-  /*!
+ /*!
   * \brief Function that allows reconfiguration of the camera.
   *
   * This function serves as a callback for the dynamic reconfigure service.  It simply passes the configuration object
@@ -268,12 +268,13 @@ private:
     if (!pubThread_)  // We need to connect
     {
       // Start the thread to loop through and publish messages
-      pubThread_.reset(
-          new boost::thread(boost::bind(&any_spinnaker_camera_driver::SpinnakerCameraNodelet::devicePoll, this)));
+      pubThread_.reset(new boost::thread(boost::bind(&any_spinnaker_camera_driver::SpinnakerCameraNodelet::devicePoll, this)));
     }
 
-    /** todo (GZ): the node will get stuck if subscribing/unsubscribing to the image topic too frequently.
-    NODELET_DEBUG_STREAM("Connect connectCb callback! The number of image_raw subscribers: " << it_pub_.getNumSubscribers() << ". The number of image subscribers: "<< pub_->getPublisher().getNumSubscribers());
+    // todo(GZ): the node will get stuck if subscribing/unsubscribing to the image topic too frequently.
+    /*
+     NODELET_DEBUG_STREAM("Connect connectCb callback! The number of image_raw subscribers: " << it_pub_.getNumSubscribers() << ". The
+    number of image subscribers: "<< pub_->getPublisher().getNumSubscribers());
     // Check if we should disconnect (there are 0 subscribers to our data)
     if(it_pub_.getNumSubscribers() == 0 && pub_->getPublisher().getNumSubscribers() == 0)
     {
@@ -378,12 +379,15 @@ private:
     cinfo_name << serial;
 
     // Set up interface diagnostics
-    camera_name_ = nh.getNamespace();
-    interface_diagnostics_updater_.setHardwareID(camera_name_ + " " + cinfo_name.str());
-    interface_diagnostics_updater_.add("Interface status checker", this, &SpinnakerCameraNodelet::checkInterfaceState);
+    camera_name_ = nh.getNamespace() + " " + cinfo_name.str();
+    interface_diagnostics_updater_.setHardwareID(camera_name_);
+    interface_diagnostics_updater_.add("Interface status checker", this, &SpinnakerCameraNodelet::getInterfaceState);
     interface_diagnostics_updater_.broadcast(0, "Starting diagnostics");
     interface_callback_timer_ =
         nh.createWallTimer(ros::WallDuration(1.0), &SpinnakerCameraNodelet::checkInterfaceStateTimerCb, this, false, true);
+
+    // Setup interface state publisher
+    interface_status_pub_ = nh.advertise<diagnostic_msgs::DiagnosticStatus>("interface_status", 1);
 
     // Get GigE camera parameters:
     pnh.param<int>("packet_size", packet_size_, 1400);
@@ -437,8 +441,7 @@ private:
     it_pub_ = it_->advertiseCamera("image_raw", 5, cb, cb);
 
     // Set up diagnostics
-    interface_diagnostics_updater_.setHardwareID(camera_name_ + " " + cinfo_name.str());
-
+    updater_.setHardwareID(camera_name_);
 
     // Set up a diagnosed publisher
     double desired_freq;
@@ -779,17 +782,49 @@ private:
     }
   }
 
+  /*!
+   * \brief Function that calculates the interface diagnostic status.
+   *
+   * This function reads the driver internal `state` variable and determines the interface status based on it.
+   * It is added to the _interface_diag_updater and gets called on every _interface_diag_updater.update()
+   * \param stat  diagnostic_updater::DiagnosticStatusWrapper the diagnostic status that will be published by the interface diagnostic
+   * updater
+   */
+  void getInterfaceState(diagnostic_updater::DiagnosticStatusWrapper& stat)
+  {
+    int8_t interface_status_level{diagnostic_msgs::DiagnosticStatus::ERROR};
+    std::string interface_status_message{};
+    getROSDiagnosticsInfo(interface_status_level, interface_status_message);
+    stat.summary(interface_status_level, interface_status_message);
+  }
+
+  /*!
+   * \brief Populates and returns a diagnostic_msgs::DiagnosticStatus message with the interface status information
+   *
+   * \return interface status message ready to be published
+   */
+  diagnostic_msgs::DiagnosticStatus getInterfaceStateROSMsg()
+  {
+    diagnostic_msgs::DiagnosticStatus msg;
+    int8_t interface_status_level{diagnostic_msgs::DiagnosticStatus::ERROR};
+    std::string interface_status_msg{};
+    getROSDiagnosticsInfo(interface_status_level, interface_status_msg);
+    msg.hardware_id = camera_name_;
+    msg.name = "interface status";
+    msg.level = interface_status_level;
+    msg.message = interface_status_msg;
+
+    return msg;
+  }
+
   /* Class Fields */
-  std::shared_ptr<dynamic_reconfigure::Server<any_spinnaker_camera_driver::SpinnakerConfig> > srv_;  ///< Needed to
-                                                                                                 ///  initialize
-                                                                                                 ///  and keep the
-  /// dynamic_reconfigure::Server
-  /// in scope.
+  std::shared_ptr<dynamic_reconfigure::Server<any_spinnaker_camera_driver::SpinnakerConfig> >
+      srv_;                                              ///< Needed to initialize and keep the dynamic_reconfigure::Server in scope.
   std::shared_ptr<image_transport::ImageTransport> it_;  ///< Needed to initialize and keep the ImageTransport in
                                                          /// scope.
-  std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_;  ///< Needed to initialize and keep the
-                                                                   /// CameraInfoManager in scope.
-  image_transport::CameraPublisher it_pub_;                        ///< CameraInfoManager ROS publisher
+  std::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_;                              ///< Needed to initialize and keep the
+                                                                                               /// CameraInfoManager in scope.
+  image_transport::CameraPublisher it_pub_;                                                    ///< CameraInfoManager ROS publisher
   std::shared_ptr<diagnostic_updater::DiagnosedPublisher<wfov_camera_msgs::WFOVImage> > pub_;  ///< Diagnosed
   std::shared_ptr<ros::Publisher> diagnostics_pub_;
   /// publisher, has to be
@@ -800,8 +835,9 @@ private:
 
   // Interface diagnostics
   diagnostic_updater::Updater interface_diagnostics_updater_;  //< Based on the driver state, reports the interface status
-  ros::WallTimer interface_callback_timer_;  //< Checks the interface periodically
-  std::string camera_name_ ; //< Indicates if it is the front or rear camera
+  ros::WallTimer interface_callback_timer_;                    //< Checks the interface periodically
+  std::string camera_name_;                                    //< Indicates if it is the front or rear camera
+  ros::Publisher interface_status_pub_;                        //< Publishes the interface status to a dedicated topic
 
   std::mutex connect_mutex_;
 
