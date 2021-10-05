@@ -84,7 +84,7 @@ public:
   {
     std::lock_guard<std::mutex> scopedLock(connect_mutex_);
 
-    // Support that nodelets are shut down smoothly. Explicit tear down of ROS infrastructure 
+    // Support that nodelets are shut down smoothly. Explicit tear down of ROS infrastructure
     // ensures that nodelet threads leave ROS-time-dependent sleeps.
     // Request shutdown of the ROS node.
     ros::requestShutdown();
@@ -159,7 +159,8 @@ private:
        interface_status_message = "OK - Camera connected";
        break;
      case STARTED:
-
+       interface_status_level = diagnostic_msgs::DiagnosticStatus::OK;
+       interface_status_message = "OK - Camera grabbing images";
        break;
      default:
        interface_status_level = diagnostic_msgs::DiagnosticStatus::WARN;
@@ -499,6 +500,7 @@ private:
     }
     catch (const std::runtime_error& e)
     {
+      state = State::ERROR;
       NODELET_ERROR("%s", e.what());
     }
   }
@@ -518,8 +520,7 @@ private:
     std::stringstream buffer;
     int serial = 0;
 
-    if (serial_file.is_open())
-    {
+    if (serial_file.is_open()) {
       std::string serial_str((std::istreambuf_iterator<char>(serial_file)), std::istreambuf_iterator<char>());
       NODELET_DEBUG_ONCE("Serial file contents: %s", serial_str.c_str());
       buffer << std::hex << serial_str;
@@ -529,6 +530,7 @@ private:
       return serial;
     }
 
+    state = State::ERROR;
     NODELET_WARN_ONCE("Unable to open serial path: %s", camera_serial_path.c_str());
     return 0;
   }
@@ -749,6 +751,7 @@ private:
 
           break;
         default:
+          state = State::ERROR;
           NODELET_ERROR("Unknown camera state %d!", state.load());
           break;
       }
