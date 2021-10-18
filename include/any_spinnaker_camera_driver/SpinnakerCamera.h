@@ -214,12 +214,6 @@ private:
    * @param sleep_time The sleep time of each query in the loop (Unit:second)
    */
   void obtainCameraPtr(double sleep_time);
-
-  /**
-   * Auto force the IP so that the PC can talk with the camera given the camera pointer.
-   * @param camPointer The spinnaker camera pointer.
-   */
-  void autoConfigure(const Spinnaker::CameraPtr& camPointer) const;
 };
 }  // namespace any_spinnaker_camera_driver
 #endif  // SPINNAKER_CAMERA_DRIVER_SPINNAKERCAMERA_H
