@@ -147,19 +147,21 @@ void SpinnakerCamera::obtainCameraPtr(double sleep_time){
       try
       {
         pCam_ = camList_.GetBySerial(serial_string);
+        if (!pCam_ || !pCam_->IsValid()){
+          // This can happen when the robot is still on but the sensor power is cut off.
+          ROS_INFO_STREAM_THROTTLE(10, "Could not find camera with serial number " +
+              serial_string + ". Is that camera plugged in? (Throttled: 10s)");
+          continue;
+        }
+        else{
+          break;
+        }
       }
       catch (const Spinnaker::Exception& e)
       {
-        // This exception is not captured in general.
-        ROS_ERROR_STREAM("[SpinnakerCamera::connect] Could not find camera with serial number " +
-                         serial_string + ". Is that camera plugged in? Error: " + std::string(e.what()));
-      }
-      if (!pCam_ || !pCam_->IsValid()){
-        ROS_ERROR_STREAM_THROTTLE(10, "[SpinnakerCamera::connect] Could not find camera with serial number " +
-                                      serial_string + ". Is that camera plugged in? (Throttled: 10s)");
-      }
-      else{
-        break;
+        // This can happen when the robot is still on but the sensor power is cut off.
+        ROS_INFO_STREAM_THROTTLE(10, "Could not find camera with serial number " +
+                         serial_string + ". Is that camera plugged in (Throttled: 10s)? Info: " + std::string(e.what()));
       }
     }
     else
@@ -168,18 +170,19 @@ void SpinnakerCamera::obtainCameraPtr(double sleep_time){
       try
       {
         pCam_ = camList_.GetByIndex(0);
+        if (!pCam_ || !pCam_->IsValid()){
+          ROS_INFO_STREAM_THROTTLE(10, "Failed to get first connected camera. Is that camera plugged in? (Throttled: 10s)");
+          continue;
+        } else{
+          break;
+        }
       }
       catch (const Spinnaker::Exception& e)
       {
         // This exception is not captured in general.
-        ROS_ERROR_STREAM("[SpinnakerCamera::connect] Failed to get first connected camera. Error: " +
+        ROS_INFO_STREAM_THROTTLE(10, "Failed to get first connected camera. Is that camera plugged in? (Throttled: 10s) Info: " +
                          std::string(e.what()));
-      }
-      if (!pCam_ || !pCam_->IsValid()){
-        ROS_ERROR_STREAM_THROTTLE(10, "[SpinnakerCamera::connect] Failed to get first connected camera. (Throttled: 10s)");
-      }
-      else{
-        break;
+        continue;
       }
     }
     // Allow some time to sleep before querying the camera again.
@@ -285,6 +288,14 @@ void SpinnakerCamera::connect()
     }
     catch (const Spinnaker::Exception& e)
     {
+      if (e == Spinnaker::SPINNAKER_ERR_INVALID_ADDRESS)
+      {
+        ROS_WARN_STREAM("The camera is on a wrong subnet. Will run auto force IP to configure the "
+                "camera correctly.");
+        if (pCam_){
+          autoConfigure(pCam_);
+        }
+      }
       throw std::runtime_error("[SpinnakerCamera::connect] Failed to connect to camera. Error: " +
                                std::string(e.what()));
     }
@@ -302,6 +313,36 @@ void SpinnakerCamera::connect()
   SpinnakerCamera::handleError("SpinnakerCamera::connect  Failed to get camera info.", error);
   isColor_ = cInfo.isColorCamera;
   */
+}
+
+void SpinnakerCamera::autoConfigure(const Spinnaker::CameraPtr& camPointer) const
+{
+  // Retrieve TL nodemap from Camera pointer.
+  Spinnaker::GenApi::INodeMap& nodeMapInterface = camPointer->GetTLDeviceNodeMap();
+
+  Spinnaker::GenApi::CEnumerationPtr ptrDeviceType =  nodeMapInterface.GetNode("DeviceType");
+  if (!IsAvailable(ptrDeviceType) || !IsReadable(ptrDeviceType))
+  {
+    ROS_WARN_STREAM("Unable to read DeviceType for the camera with a serial " << serial_);
+    return;
+  }
+
+  if (ptrDeviceType->GetIntValue() != Spinnaker::DeviceType_GigEVision)
+  {
+    // Only force IP on GEV device.
+    return;
+  }
+
+  Spinnaker::GenApi::CCommandPtr ptrAutoForceIP = nodeMapInterface.GetNode("GevDeviceAutoForceIP");
+  if (IsAvailable(ptrAutoForceIP) && IsWritable(ptrAutoForceIP))
+  {
+    camPointer->TLDevice.GevDeviceAutoForceIP.Execute();
+    ROS_INFO_STREAM("AutoForceIP executed for camera with a serial "  << serial_);
+  }
+  else
+  {
+    ROS_WARN("Force IP node not available for this interface");
+  }
 }
 
 void SpinnakerCamera::disconnect()
