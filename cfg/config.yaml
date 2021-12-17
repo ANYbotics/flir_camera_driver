@@ -30,8 +30,8 @@ spinnaker_camera_nodelet:
   line_mode: Input
   line_selector: Line0
   line_source: Off
-  reverse_x: true
-  reverse_y: true
+  reverse_x: false
+  reverse_y: false
   saturation: 100.0
   saturation_enable: false
   serial: 0
