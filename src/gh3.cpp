@@ -22,11 +22,11 @@ OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTE
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#include "spinnaker_camera_driver/gh3.h"
+#include "any_spinnaker_camera_driver/gh3.h"
 
 #include <string>
 
-namespace spinnaker_camera_driver
+namespace any_spinnaker_camera_driver
 {
 Gh3::Gh3(Spinnaker::GenApi::INodeMap* node_map) : Camera(node_map)
 {
@@ -158,7 +158,7 @@ void Gh3::setNewConfiguration(const SpinnakerConfig& config, const uint32_t& lev
 }
 
 // Image Size and Pixel Format
-void Gh3::setImageControlFormats(const spinnaker_camera_driver::SpinnakerConfig& config)
+void Gh3::setImageControlFormats(const any_spinnaker_camera_driver::SpinnakerConfig& config)
 {
   // Set Binning and Decimation
   // setProperty(node_map_, "BinningHorizontal", config.image_format_x_binning);  // Not available on GH3
@@ -204,4 +204,4 @@ void Gh3::setImageControlFormats(const spinnaker_camera_driver::SpinnakerConfig&
   // Set Pixel Format
   setProperty(node_map_, "PixelFormat", config.image_format_color_coding);
 }
-}  // namespace spinnaker_camera_driver
+}  // namespace any_spinnaker_camera_driver

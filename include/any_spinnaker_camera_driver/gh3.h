@@ -24,9 +24,9 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 */
 #ifndef SPINNAKER_CAMERA_DRIVER_GH3_H
 #define SPINNAKER_CAMERA_DRIVER_GH3_H
-#include "spinnaker_camera_driver/camera.h"
+#include "any_spinnaker_camera_driver/camera.h"
 
-namespace spinnaker_camera_driver
+namespace any_spinnaker_camera_driver
 {
 class Gh3 : public Camera
 {
@@ -34,10 +34,10 @@ public:
   explicit Gh3(Spinnaker::GenApi::INodeMap* node_map);
   ~Gh3();
   void setFrameRate(const float frame_rate);
-  void setNewConfiguration(const SpinnakerConfig& config, const uint32_t& level);
+  void setNewConfiguration(const any_spinnaker_camera_driver::SpinnakerConfig& config, const uint32_t& level);
 
 private:
-  void setImageControlFormats(const spinnaker_camera_driver::SpinnakerConfig& config);
+  void setImageControlFormats(const any_spinnaker_camera_driver::SpinnakerConfig& config);
 };
-}  // namespace spinnaker_camera_driver
+}  // namespace any_spinnaker_camera_driver
 #endif  // SPINNAKER_CAMERA_DRIVER_GH3_H

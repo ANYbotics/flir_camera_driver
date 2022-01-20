@@ -155,7 +155,7 @@ diagnostic_msgs::DiagnosticStatus DiagnosticsManager::getDiagStatus(const diagno
 
   diagnostic_msgs::DiagnosticStatus diag_status;
   diag_status.values.push_back(kv);
-  diag_status.name = node_name + ": " + Spinnaker::GenICam::gcstring(camera_name_.c_str()) + " " + param.parameter_name;
+  diag_status.name = node_name + ": " + Spinnaker::GenICam::gcstring(camera_name_.c_str()).c_str() + " " + param.parameter_name.c_str();
   diag_status.hardware_id =  camera_name_ + " " + serial_number_;
 
   // Determine status level
