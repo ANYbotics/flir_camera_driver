@@ -88,6 +88,18 @@ inline bool setProperty(Spinnaker::GenApi::INodeMap* node_map, const std::string
         ROS_WARN_STREAM("[SpinnakerCamera]: ("
                         << static_cast<Spinnaker::GenApi::CStringPtr>(node_map->GetNode("DeviceID"))->GetValue()
                         << ") Entry name " << entry_name << " for property " << property_name << " not available.");
+                        << ") Entry name " << entry_name << " not available.");
+
+        ROS_WARN("Available:");
+        Spinnaker::GenApi::NodeList_t entries;
+        enumerationPtr->GetEntries(entries);
+        for (auto& entry : entries)
+        {
+          auto enumEntry = dynamic_cast<Spinnaker::GenApi::IEnumEntry*>(entry);
+          if (enumEntry && Spinnaker::GenApi::IsAvailable(entry))
+            ROS_WARN_STREAM(" - " << entry->GetName() << " (display " << entry->GetDisplayName() << ", symbolic "
+                                  << enumEntry->GetSymbolic() << ")");
+        }
       }
     }
     else
