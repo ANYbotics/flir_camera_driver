@@ -477,7 +477,7 @@ private:
             "/diagnostics", 1, diag_cb, diag_cb)));
 
     diag_man = std::unique_ptr<DiagnosticsManager>(new DiagnosticsManager(
-        frame_id_, std::to_string(spinnaker_.getSerial()), diagnostics_pub_));
+        frame_id_, std::to_string(spinnaker_.getSerial()), diagnostics_pub_, nh));
     diag_man->addDiagnostic("DeviceTemperature", true, std::make_pair(0.0f, 90.0f), -10.0f, 95.0f);
     // Frame rate specification: http://softwareservices.flir.com/BFS-GE-16S2-BD2/latest/Model/spec.html?Highlight=78
     // Resulting frame rate in Hertz. If this does not equal the Acquisition Frame Rate it is because the Exposure Time is greater than the frame time.
@@ -537,6 +537,7 @@ private:
 
   void diagPoll()
   {
+    diag_man->addAnalyzers();
     while (!boost::this_thread::interruption_requested())  // Block until we need
                                                            // to stop this// thread.
     {
