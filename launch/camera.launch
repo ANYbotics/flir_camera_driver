@@ -33,12 +33,12 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 
 
   <group ns="$(arg camera_name)">
-    <rosparam command="load"           file="$(find any_spinnaker_camera_driver)/cfg/config.yaml"/>
     <!--  Launch nodelet manager -->
     <node pkg="nodelet" type="nodelet" name="camera_nodelet_manager"   args="manager" cwd="node" output="screen"/>
 
     <node pkg="nodelet" type="nodelet" name="spinnaker_camera_nodelet" args="load any_spinnaker_camera_driver/SpinnakerCameraNodelet camera_nodelet_manager" >
-      <param name="serial"        value="$(arg camera_serial)" />
+      <rosparam command="load"           file="$(find any_spinnaker_camera_driver)/cfg/config.yaml"/>
+      <param name="serial"               value="$(arg camera_serial)" />
     </node>
 
     <node pkg="nodelet" type="nodelet" name="image_proc_debayer"       args="load image_proc/debayer camera_nodelet_manager"/>
