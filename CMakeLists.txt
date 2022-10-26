@@ -119,6 +119,12 @@ install(
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+catkin_install_python(
+  PROGRAMS
+    scripts/thin_lens_equation_plot.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 # Redistributing the flycapture .so file is permitted by the SDK EULA:
 # http://www.ptgrey.com/support/kb/data/PGR-FlyCap-SDK-LA.pdf
 # if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/usr/lib)
