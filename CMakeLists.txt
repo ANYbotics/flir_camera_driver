@@ -28,6 +28,12 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
+  INCLUDE_DIRS
+    include
+  LIBRARIES
+    Camera
+    SpinnakerCameraLib
+    Diagnostics
   CATKIN_DEPENDS
     image_exposure_msgs
     nodelet
@@ -150,6 +156,12 @@ install(
     cfg
     launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
+
+install(
+  DIRECTORY
+    include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
 
 if (CATKIN_ENABLE_TESTING)
   find_package(roslaunch REQUIRED)
