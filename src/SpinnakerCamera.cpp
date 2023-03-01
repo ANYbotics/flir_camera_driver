@@ -85,10 +85,13 @@ void SpinnakerCamera::setNewConfiguration(const any_spinnaker_camera_driver::Spi
     ROS_DEBUG("SpinnakerCamera::setNewConfiguration: Reconfigure Stop.");
     bool capture_was_running = captureRunning_;
 
-    // For some reason some params only work after aquisition has been started once.
-    {
+    // For some reason some params only work after acquisition has been started once.
+    try {
+      // When the camera is held by another application, we need to catch the runtime error.
       start();
       stop();
+    } catch (const std::runtime_error& e) {
+      throw std::runtime_error("Failed to restart the camera: " + std::string(e.what()));
     }
 
     camera_->setNewConfiguration(config, level);
