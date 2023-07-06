@@ -138,7 +138,8 @@ Spinnaker::GenApi::CNodePtr SpinnakerCamera::readProperty(const Spinnaker::GenIC
   }
 }
 
-void SpinnakerCamera::obtainCameraPtr(double sleep_time){
+bool SpinnakerCamera::obtainCameraPtr(double sleep_time){
+  const ros::Time currTime{ros::Time::now()};
   while ((!pCam_ || !pCam_->IsValid()) && ros::ok()){
     // Without the following line, camList_ will be always empty if we start the ROS driver before the cameras are powered on.
     camList_ = system_->GetCameras();
@@ -190,14 +191,22 @@ void SpinnakerCamera::obtainCameraPtr(double sleep_time){
     }
     // Allow some time to sleep before querying the camera again.
     ros::Duration(sleep_time).sleep();
+
+    if ((ros::Time::now() - currTime).toSec() > deviceConnectionTimeout_) {
+      ROS_ERROR("Cannot connect to the device within %f seconds", deviceConnectionTimeout_);
+      return false;
+    }
   }
+  return true;
 }
 
-void SpinnakerCamera::connect()
+bool SpinnakerCamera::connect()
 {
   if (!pCam_)
   {
-    obtainCameraPtr(1.0);
+    if(!obtainCameraPtr(1.0)){
+      return false;
+    }
 
     try
     {
@@ -215,7 +224,8 @@ void SpinnakerCamera::connect()
         }
         else
         {
-          throw std::runtime_error("[SpinnakerCamera::connect]: Unable to determine serial number.");
+          ROS_DEBUG("[SpinnakerCamera::connect]: Unable to determine serial number.");
+          return false;
         }
       }
 
@@ -241,8 +251,9 @@ void SpinnakerCamera::connect()
     }
     catch (const Spinnaker::Exception& e)
     {
-      throw std::runtime_error("[SpinnakerCamera::connect] Failed to determine device info with error: " +
+      ROS_ERROR_STREAM("[SpinnakerCamera::connect] Failed to determine device info with error: " +
                                std::string(e.what()));
+      return false;
     }
 
     try
@@ -276,10 +287,12 @@ void SpinnakerCamera::connect()
                    << " Camera model name: '" <<  model_name_str << "'"
                    << " with serial '" << std::to_string(serial_) << "'.");
 
-      if (model_name_str.find("Blackfly S") != std::string::npos)
+      if (model_name_str.find("Blackfly S") != std::string::npos){
         camera_.reset(new Camera(node_map_));
-      else if (model_name_str.find("Chameleon3") != std::string::npos)
+      }
+      else if (model_name_str.find("Chameleon3") != std::string::npos){
         camera_.reset(new Cm3(node_map_));
+      }
       else
       {
         camera_.reset(new Camera(node_map_));
@@ -299,15 +312,18 @@ void SpinnakerCamera::connect()
           autoConfigure(pCam_);
         }
       }
-      throw std::runtime_error("[SpinnakerCamera::connect] Failed to connect to camera. Error: " +
+      ROS_ERROR_STREAM("[SpinnakerCamera::connect] Failed to connect to camera. Error: " +
                                std::string(e.what()));
+      return false;
     }
     catch (const std::runtime_error& e)
     {
-      throw std::runtime_error("[SpinnakerCamera::connect] Failed to configure chunk data. Error: " +
+      ROS_ERROR_STREAM("[SpinnakerCamera::connect] Failed to configure chunk data. Error: " +
                                std::string(e.what()));
+      return false;
     }
   }
+  return true;
 
   // TODO(mhosmar): Get camera info to check if camera is running in color or mono mode
   /*

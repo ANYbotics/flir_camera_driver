@@ -103,8 +103,9 @@ public:
   * this will connect to the first camera.  Connecting to the first camera is not recommended for multi-camera or
   * production systems.
   * This function must be called before setNewConfiguration() or start()!
+  @return True if the camera is connected.
   */
-  void connect();
+  bool connect();
 
   /*!
   * \brief Disconnects from the camera.
@@ -179,6 +180,7 @@ private:
   Spinnaker::SystemPtr system_;
   Spinnaker::CameraList camList_;
   Spinnaker::CameraPtr pCam_;
+  double deviceConnectionTimeout_{30};
 
   // TODO(mhosmar) use std::shared_ptr
   Spinnaker::GenApi::INodeMap* node_map_;
@@ -212,8 +214,9 @@ private:
    * @brief The function tries to obtain the valid camera pointer. It contains a while loop to query the camera point.
    * It never returns unless it obtains a valid camera pointer.
    * @param sleep_time The sleep time of each query in the loop (Unit:second)
+   * @return True if the camera pointer is obtained.
    */
-  void obtainCameraPtr(double sleep_time);
+  bool obtainCameraPtr(double sleep_time);
 
   /**
    * Auto force the IP so that the PC can talk with the camera given the camera pointer.
