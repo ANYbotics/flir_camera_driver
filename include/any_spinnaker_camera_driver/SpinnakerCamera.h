@@ -180,7 +180,7 @@ private:
   Spinnaker::SystemPtr system_;
   Spinnaker::CameraList camList_;
   Spinnaker::CameraPtr pCam_;
-  double deviceConnectionTimeout_{30};
+  double deviceConnectionTimeout_{60};
 
   // TODO(mhosmar) use std::shared_ptr
   Spinnaker::GenApi::INodeMap* node_map_;
