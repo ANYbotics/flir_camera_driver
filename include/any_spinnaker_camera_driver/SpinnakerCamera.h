@@ -180,7 +180,8 @@ private:
   Spinnaker::SystemPtr system_;
   Spinnaker::CameraList camList_;
   Spinnaker::CameraPtr pCam_;
-  double deviceConnectionTimeout_{60};
+  // The timeout allowed for the driver to connect to the device. Unit: second.
+  double deviceConnectionTimeout_{28};
 
   // TODO(mhosmar) use std::shared_ptr
   Spinnaker::GenApi::INodeMap* node_map_;

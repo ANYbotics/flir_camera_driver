@@ -140,7 +140,10 @@ Spinnaker::GenApi::CNodePtr SpinnakerCamera::readProperty(const Spinnaker::GenIC
 
 bool SpinnakerCamera::obtainCameraPtr(double sleep_time){
   const ros::Time currTime{ros::Time::now()};
-  while ((!pCam_ || !pCam_->IsValid()) && ros::ok()){
+  const auto isCameraPtrObtained = [this](const ros::Time currTime) -> bool {
+    return (!pCam_ || !pCam_->IsValid()) && ros::ok() && ((ros::Time::now() - currTime).toSec() <= deviceConnectionTimeout_);
+  };
+  while (isCameraPtrObtained(currTime)){
     // Without the following line, camList_ will be always empty if we start the ROS driver before the cameras are powered on.
     camList_ = system_->GetCameras();
     // If we have a specific camera to connect to (specified by a serial number)
@@ -158,7 +161,7 @@ bool SpinnakerCamera::obtainCameraPtr(double sleep_time){
           continue;
         }
         else{
-          break;
+          return true;
         }
       }
       catch (const Spinnaker::Exception& e)
@@ -178,7 +181,7 @@ bool SpinnakerCamera::obtainCameraPtr(double sleep_time){
           ROS_INFO_STREAM_THROTTLE(10, "Failed to get first connected camera. Is that camera plugged in? (Throttled: 10s)");
           continue;
         } else{
-          break;
+          return true;
         }
       }
       catch (const Spinnaker::Exception& e)
@@ -191,13 +194,10 @@ bool SpinnakerCamera::obtainCameraPtr(double sleep_time){
     }
     // Allow some time to sleep before querying the camera again.
     ros::Duration(sleep_time).sleep();
-
-    if ((ros::Time::now() - currTime).toSec() > deviceConnectionTimeout_) {
-      ROS_ERROR("Cannot connect to the device within %f seconds", deviceConnectionTimeout_);
-      return false;
-    }
   }
-  return true;
+  ROS_ERROR("Time used to connect to the device / upper bound time: %f seconds / %f seconds",
+            (ros::Time::now() - currTime).toSec(), deviceConnectionTimeout_);
+  return false;
 }
 
 bool SpinnakerCamera::connect()
@@ -260,11 +260,11 @@ bool SpinnakerCamera::connect()
     {
 	  // Set buffer mode to newest first, to always transmit first the most recent frames.
       pCam_->TLStream.StreamBufferHandlingMode.SetValue(Spinnaker::StreamBufferHandlingMode_NewestFirst);
-      
+
       // Set the buffer count mode to manual, and limit number of buffers to 1 per camera to ensure real-time.
       pCam_->TLStream.StreamBufferCountMode.SetValue(Spinnaker::StreamBufferCountMode_Manual);
       pCam_->TLStream.StreamBufferCountManual.SetValue(1);
-		
+
       // Initialize Camera
       pCam_->Init();
 
