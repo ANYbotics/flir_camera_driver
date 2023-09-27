@@ -304,14 +304,6 @@ bool SpinnakerCamera::connect()
     }
     catch (const Spinnaker::Exception& e)
     {
-      if (e == Spinnaker::SPINNAKER_ERR_INVALID_ADDRESS)
-      {
-        ROS_WARN_STREAM("The camera is on a wrong subnet. Will run auto force IP to configure the "
-                "camera correctly.");
-        if (pCam_){
-          autoConfigure(pCam_);
-        }
-      }
       ROS_ERROR_STREAM("[SpinnakerCamera::connect] Failed to connect to camera. Error: " +
                                std::string(e.what()));
       return false;
