@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(any_spinnaker_camera_driver)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wall -Wextra -Wpedantic)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
