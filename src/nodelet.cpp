@@ -395,9 +395,6 @@ private:
     pnh.param<bool>("auto_packet_size", auto_packet_size_, true);
     pnh.param<int>("packet_delay", packet_delay_, 4000);
 
-    // TODO(mhosmar):  Set GigE parameters:
-    // spinnaker_.setGigEParameters(auto_packet_size_, packet_size_, packet_delay_);
-
     // Get the location of our camera config yaml
     std::string camera_info_url;
     pnh.param<std::string>("camera_info_url", camera_info_url, "");
@@ -503,6 +500,9 @@ private:
       state = State::ERROR;
       NODELET_ERROR("%s", e.what());
     }
+
+    // Set the Ethernet parameters to prevent image grabbing errors
+    spinnaker_.setGigEParameters(auto_packet_size_, packet_size_, packet_delay_);
   }
 
   /**

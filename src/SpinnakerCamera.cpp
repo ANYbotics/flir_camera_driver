@@ -126,6 +126,17 @@ int SpinnakerCamera::getWidthMax()
     return 0;
 }
 
+void SpinnakerCamera::setGigEParameters(bool auto_packet_size, unsigned int packet_size, unsigned int packet_delay) {
+  if (camera_)
+  {
+    camera_->setGigEParameters(auto_packet_size, packet_size, packet_delay);
+  }
+  else
+  {
+    ROS_WARN("Failed to set GigE parameters, because camera was not initialized yet.");
+  }
+}
+
 Spinnaker::GenApi::CNodePtr SpinnakerCamera::readProperty(const Spinnaker::GenICam::gcstring property_name)
 {
   if (camera_)

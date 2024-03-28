@@ -65,6 +65,16 @@ public:
   virtual void setGain(const float& gain);
   int getHeightMax();
   int getWidthMax();
+  
+  /*!
+  * \brief Set parameters relative to GigE cameras.
+  *
+  * \param auto_packet_size Flag stating if packet size should be automatically determined or not. (not implemented)
+  * \param packet_size The packet size value to use if auto_packet_size is false.
+  * \param packet_delay The packet delay to use. (not implemented)
+  */
+  void setGigEParameters(bool auto_packet_size, unsigned int packet_size, unsigned int packet_delay);
+
 
   Spinnaker::GenApi::CNodePtr
   readProperty(const Spinnaker::GenICam::gcstring property_name);
@@ -85,14 +95,6 @@ protected:
   */
   virtual void setFrameRate(const float frame_rate);
   virtual void setImageControlFormats(const any_spinnaker_camera_driver::SpinnakerConfig& config);
-  /*!
-  * \brief Set parameters relative to GigE cameras.
-  *
-  * \param auto_packet_size Flag stating if packet size should be automatically determined or not.
-  * \param packet_size The packet size value to use if auto_packet_size is false.
-  */
-  // TODO(mhosmar): Implement later
-  // void setGigEParameters(bool auto_packet_size, unsigned int packet_size, unsigned int packet_delay);
 
   /*!
   * \brief Will autoconfigure the packet size of the GigECamera with the given GUID.

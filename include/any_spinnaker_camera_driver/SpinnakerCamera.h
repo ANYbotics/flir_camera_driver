@@ -162,6 +162,7 @@ public:
   void setGain(const float& gain);
   int getHeightMax();
   int getWidthMax();
+  void setGigEParameters(bool auto_packet_size, unsigned int packet_size, unsigned int packet_delay);
   Spinnaker::GenApi::CNodePtr readProperty(const Spinnaker::GenICam::gcstring property_name);
 
   uint32_t getSerial()

@@ -225,11 +225,14 @@ void Camera::setGain(const float& gain)
   setProperty(node_map_, "Gain", static_cast<float>(gain));
 }
 
-/*
-void Camera::setGigEParameters(bool auto_packet_size, unsigned int packet_size, unsigned int packet_delay)
+
+void Camera::setGigEParameters(bool /*auto_packet_size*/, unsigned int packet_size, unsigned int /*packet_delay*/)
 {
+  // Todo(md): implement auto_packet_size and packet_delay. Did not really figure out how to do that yet.
+  setProperty(node_map_, "GevSCPSPacketSize", static_cast<int>(packet_size));
 }
 
+/*
 void Camera::setupGigEPacketSize(PGRGuid & guid)
 {
 }
