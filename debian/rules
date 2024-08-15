@@ -18,6 +18,10 @@ export PKG_CONFIG_PATH=/opt/ros/noetic/lib/pkgconfig
 # Explicitly enable -DNDEBUG, see:
 # 	https://github.com/ros-infrastructure/bloom/issues/327
 export DEB_CXXFLAGS_MAINT_APPEND=-DNDEBUG
+# Option to disable testing.
+ifneq ($(filter nocheck,$(DEB_BUILD_OPTIONS)),)
+	BUILD_TESTING_ARG=-DBUILD_TESTING=OFF -DCATKIN_ENABLE_TESTING=OFF
+endif
 
 %:
 	dh  $@
@@ -30,7 +34,8 @@ override_dh_auto_configure:
 	dh_auto_configure -- \
 		-DCATKIN_BUILD_BINARY_PACKAGE="1" \
 		-DCMAKE_INSTALL_PREFIX="/opt/ros/noetic" \
-		-DCMAKE_PREFIX_PATH="/opt/ros/noetic" -DCMAKE_BUILD_TYPE=Release
+		-DCMAKE_PREFIX_PATH="/opt/ros/noetic" -DCMAKE_BUILD_TYPE=Release \
+		$(BUILD_TESTING_ARG)
 
 override_dh_auto_build:
 	# In case we're installing to a non-standard location, look for a setup.sh
