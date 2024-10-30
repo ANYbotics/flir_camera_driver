@@ -6,9 +6,9 @@ auto_sharpness: true
 auto_white_balance: Continuous
 brightness: 1.7
 # Usage 1: for absolute path.
-#camera_info_url: "file:///opt/ros/noetic/share/anymal_config_xd001/1/config/non_ros/wide_angle_camera_calibration/rear.yaml"
+#camera_info_url: "file:///opt/ros/noetic/share/anymal_config_d001/1/config/non_ros/wide_angle_camera_calibration/rear.yaml"
 # Usage2: for relative path within a package.
-#camera_info_url: 'package://anymal_config_xd001/1/config/non_ros/wide_angle_camera_calibration/rear.yaml'
+#camera_info_url: 'package://anymal_config_d001/1/config/non_ros/wide_angle_camera_calibration/rear.yaml'
 # Notice: Using "file://$(rospack find anymal_${ANYMAL_NAME})/config/non_ros/wide_angle_camera_calibration/front.yaml" doesn't work without using stack_launcher since "rospack find" is resolved there.
 camera_info_url: ""
 enable_trigger: "Off"
